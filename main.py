@@ -27,7 +27,7 @@ async def on_ready():
 async def submit(interaction: discord.Interaction, submission: discord.Attachment):
     content_type = submission.content_type
     logging.info(content_type)
-    if "video" not in content_type or "image" not in content_type:
+    if "video" not in content_type and "image" not in content_type:
         await interaction.response.send_message(
             f"File must be an image or video. Got {content_type}", ephemeral=True
         )
