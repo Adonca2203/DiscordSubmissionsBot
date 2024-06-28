@@ -20,11 +20,15 @@ tree = discord.app_commands.CommandTree(client)
 @client.event
 async def on_ready():
     await tree.sync()
-    print(f"Logged in as {client.user}")
+    logging.info(f"Logged in as {client.user}")
 
 
 @tree.command(name="submit", description="Submit an entry for the competition")
-async def submit(interaction: discord.Interaction, submission: discord.Attachment):
+async def submit(
+    interaction: discord.Interaction,
+    submission: discord.Attachment,
+    description: str = "",
+):
     content_type = submission.content_type
     logging.info(content_type)
     if "video" not in content_type and "image" not in content_type:
@@ -52,9 +56,12 @@ async def submit(interaction: discord.Interaction, submission: discord.Attachmen
         data = await submission.read()
         file.write(data)
         file.seek(0)
+        msg = f"Submitted by <@{interaction.user.id}>"
+        if description:
+            msg += f"\n{description}"
         message: discord.Message = await channel.send(
             mention_author=True,
-            content=f"Submitted by <@{interaction.user.id}>",
+            content=msg,
             file=discord.File(os.path.join("/tmp", file.name)),
         )
         await message.add_reaction(os.getenv("REACT_EMOTE"))
