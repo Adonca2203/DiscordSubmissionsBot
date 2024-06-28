@@ -9,6 +9,7 @@ FIFTY_MB = 50_000_000
 intents = discord.Intents.default()
 intents.typing = False
 intents.presences = False
+intents.reactions = True
 
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
