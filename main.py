@@ -2,10 +2,10 @@ import os
 from dotenv import load_dotenv
 import discord
 import tempfile
-import logging
+# import logging
 
 load_dotenv()
-logging.basicConfig(filename="bot.log", level=logging.INFO)
+# logging.basicConfig(filename="bot.log", level=logging.INFO)
 
 FIFTY_MB = 50_000_000
 intents = discord.Intents.default()
@@ -25,13 +25,6 @@ async def on_ready():
 
 @tree.command(name="submit", description="Submit an entry for the competition")
 async def submit(interaction: discord.Interaction, submission: discord.Attachment):
-    content_type = submission.content_type
-    if not ("video" or "image") in content_type:
-        await interaction.response.send_message(
-            f"File must be an image or video. Got {content_type}", ephemeral=True
-        )
-        return
-
     if submission.size > FIFTY_MB:
         await interaction.response.send_message(
             "File size is too big. Must be less than 8MB", ephemeral=True
