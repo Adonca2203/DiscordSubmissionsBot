@@ -29,6 +29,7 @@ async def submit(
     submission: discord.Attachment,
     description: str = "",
 ):
+    await interaction.response.defer(ephemeral=True)
     content_type = submission.content_type
     logging.info(content_type)
     if "video" not in content_type and "image" not in content_type:
@@ -39,12 +40,12 @@ async def submit(
 
     if submission.size > FIFTY_MB:
         await interaction.response.send_message(
-            "File size is too big. Must be less than 8MB", ephemeral=True
+            "File size is too big. Must be less than 50MB", ephemeral=True
         )
         return
 
     channel: discord.TextChannel = discord.utils.get(
-        interaction.guild.text_channels, name="wardrobe-warriors"
+        interaction.guild.text_channels, name=os.getenv("COMPETITION_NAME")
     )
     if not channel:
         channel = await interaction.guild.create_text_channel(
@@ -66,7 +67,7 @@ async def submit(
         )
         await message.add_reaction(os.getenv("REACT_EMOTE"))
 
-    await interaction.response.send_message("Submitted!", ephemeral=True)
+    await interaction.followup.send("Submitted!", ephemeral=True)
 
 
 client.run(token=os.getenv("TOKEN"))
