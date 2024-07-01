@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import discord
 import tempfile
 import logging
+from typing import List
 
 load_dotenv()
 logging.basicConfig(filename="bot.log", level=logging.INFO)
@@ -17,6 +18,23 @@ client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 
 
+async def _validate_submissions(submissions: List[discord.Attachment]) -> bool:
+    total_size = 0
+
+    for s in submissions:
+        total_size += s.size
+
+    if total_size > FIFTY_MB:
+        return False
+
+    for s in submissions:
+        content_type = s.content_type
+        if "video" not in content_type and "image" not in content_type:
+            return False
+
+    return True
+
+
 @client.event
 async def on_ready():
     await tree.sync()
@@ -27,20 +45,22 @@ async def on_ready():
 async def submit(
     interaction: discord.Interaction,
     submission: discord.Attachment,
+    additional1: discord.Attachment = None,
+    additional2: discord.Attachment = None,
     description: str = "",
 ):
     await interaction.response.defer(ephemeral=True)
-    content_type = submission.content_type
-    logging.info(content_type)
-    if "video" not in content_type and "image" not in content_type:
-        await interaction.response.send_message(
-            f"File must be an image or video. Got {content_type}", ephemeral=True
-        )
-        return
+    submisisons: List[discord.Attachment] = [submission]
 
-    if submission.size > FIFTY_MB:
-        await interaction.response.send_message(
-            "File size is too big. Must be less than 50MB", ephemeral=True
+    if additional1:
+        submisisons.append(additional1)
+
+    if additional2:
+        submisisons.append(additional2)
+
+    if not await _validate_submissions(submisisons):
+        await interaction.followup(
+            "Submissions must be less than 50MB and be videos or images (including gifs)"
         )
         return
 
@@ -52,20 +72,30 @@ async def submit(
             name=os.getenv("COMPETITION_NAME")
         )
 
-    file_suffix = submission.filename.split(".")[1]
-    with tempfile.NamedTemporaryFile(mode="r+b", suffix=f".{file_suffix}") as file:
-        data = await submission.read()
+    files: List[tempfile.NamedTemporaryFile] = []
+    discord_files: List[discord.File] = []
+    for s in submisisons:
+        file_suffix = s.filename.split(".")[1]
+        file = tempfile.NamedTemporaryFile(mode="wb", suffix=f".{file_suffix}")
+        data = await s.read()
+
         file.write(data)
         file.seek(0)
-        msg = f"Submitted by <@{interaction.user.id}>"
-        if description:
-            msg += f"\n{description}"
-        message: discord.Message = await channel.send(
-            mention_author=True,
-            content=msg,
-            file=discord.File(os.path.join("/tmp", file.name)),
-        )
-        await message.add_reaction(os.getenv("REACT_EMOTE"))
+        files.append(file)
+        discord_files.append(discord.File(os.path.join("/tmp", file.name)))
+
+    msg = f"Submitted by <@{interaction.user.id}>"
+    if description:
+        msg += f"\n{description}"
+    message: discord.Message = await channel.send(
+        mention_author=True,
+        content=msg,
+        files=discord_files,
+    )
+    await message.add_reaction(os.getenv("REACT_EMOTE"))
+
+    for f in files:
+        f.close()  # temp files are automatically deleted when closed
 
     await interaction.followup.send("Submitted!", ephemeral=True)
 
